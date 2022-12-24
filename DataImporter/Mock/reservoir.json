@@ -1,0 +1,61 @@
+{
+  "DataReferencia": "28/08/2022",
+  "Lagos": [
+    {
+      "Nome": "Cantareira",
+      "VolumePorcentagem": "33,5",
+      "VolumeVariacao": "-0,1",
+      "PrecDia": "0,0",
+      "PrecMensal": "39,5",
+      "VolumeAnterior": "33,6"
+    },
+    {
+      "Nome": "Alto Tietê",
+      "VolumePorcentagem": "50,4",
+      "VolumeVariacao": "-0,2",
+      "PrecDia": "0,0",
+      "PrecMensal": "33,6",
+      "VolumeAnterior": "50,6"
+    },
+    {
+      "Nome": "Guarapiranga",
+      "VolumePorcentagem": "60,3",
+      "VolumeVariacao": "-0,3",
+      "PrecDia": "0,0",
+      "PrecMensal": "23,4",
+      "VolumeAnterior": "60,6"
+    },
+    {
+      "Nome": "Cotia",
+      "VolumePorcentagem": "61,3",
+      "VolumeVariacao": "-0,5",
+      "PrecDia": "0,0",
+      "PrecMensal": "22,8",
+      "VolumeAnterior": "61,8"
+    },
+    {
+      "Nome": "Rio Grande",
+      "VolumePorcentagem": "87,7",
+      "VolumeVariacao": "-0,2",
+      "PrecDia": "0,0",
+      "PrecMensal": "34,2",
+      "VolumeAnterior": "87,9"
+    },
+    {
+      "Nome": "Rio Claro",
+      "VolumePorcentagem": "36,8",
+      "VolumeVariacao": "-0,1",
+      "PrecDia": "0,0",
+      "PrecMensal": "79,2",
+      "VolumeAnterior": "36,9"
+    },
+    {
+      "Nome": "São Lourenço",
+      "VolumePorcentagem": "67,5",
+      "VolumeVariacao": "-0,4",
+      "PrecDia": "0,0",
+      "PrecMensal": "50,0",
+      "VolumeAnterior": "67,9"
+    }
+  ]
+}

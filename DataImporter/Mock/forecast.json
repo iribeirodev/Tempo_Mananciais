@@ -1,0 +1,30 @@
+{
+  "DataReferencia": "28/08/2022",
+  "Estacao": "Inverno",
+  "Nascer": "06h23",
+  "Ocaso": "17h55",
+  "Umidade": 20,
+  "Temp_Max": 32,
+  "Temp_Min": 13,
+  "TendenciaTemperatura": "Em ligeiro declínio",
+  "Periodos": [
+    {
+      "Nome": "Manhã",
+      "Resumo": "Poucas nuvens",
+      "Dir_Vento": "N-NE",
+      "Int_Vento": "Fracos"
+    },
+    {
+      "Nome": "Tarde",
+      "Resumo": "Muitas nuvens com possibilidade de chuva isolada",
+      "Dir_Vento": "S-W",
+      "Int_Vento": "Moderados"
+    },
+    {
+      "Nome": "Noite",
+      "Resumo": "Muitas nuvens com chuva isolada",
+      "Dir_Vento": "S-SE",
+      "Int_Vento": "Moderados"
+    }
+  ]
+}
