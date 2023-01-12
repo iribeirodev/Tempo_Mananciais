@@ -19,8 +19,33 @@ namespace MediaProcessing.UseCases
         private readonly string _imagesDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Assets", "Images");
         private readonly string _fontsDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Assets", "Fonts");
         private readonly string _trackDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Track");
+
         private PrivateFontCollection fontCollection = new PrivateFontCollection();
         private readonly int FRAMES_PER_INFO = 15;
+
+        public async Task<ProcessResponse> Process(ProcessDataRequest processDataRequest)
+        {
+            try
+            {
+                await ClearAllResources();
+                await CopyResources();
+                await WriteData(processDataRequest);
+                await GenerateMedia();
+
+                return new ProcessResponse
+                {
+                    Message = "Processamento de imagens concluído."
+                };
+            }
+            catch (Exception exc)
+            {
+                return new ProcessResponse
+                {
+                    IsSuccessFull = false,
+                    Message = exc.Message
+                };
+            }
+        }
 
         /// <summary>
         /// Remove os recursos do diretório de trabalho 
@@ -276,7 +301,7 @@ namespace MediaProcessing.UseCases
                 startInfo.WorkingDirectory = _workDir;
                 startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Normal;
                 startInfo.FileName = "cmd.exe";
-                startInfo.Arguments = @"/C ffmpeg\bin\ffmpeg.exe -r 1 -i pic%04d.png -i track.mp3 -pix_fmt yuv420p output.mp4";
+                startInfo.Arguments = @"/C ffmpeg\ffmpeg.exe -r 1 -i pic%04d.png -i track.mp3 -pix_fmt yuv420p output.mp4";
 
                 process.StartInfo = startInfo;
 
@@ -285,28 +310,6 @@ namespace MediaProcessing.UseCases
             });
         }
 
-        public async Task<ProcessResponse> Process(ProcessDataRequest processDataRequest)
-        {
-            try
-            {
-                await ClearAllResources();
-                await CopyResources();
-                await WriteData(processDataRequest);
-                await GenerateMedia();
 
-                return new ProcessResponse
-                {
-                    Message = "Processamento de imagens concluído."
-                };
-            }
-            catch (Exception exc)
-            {
-                return new ProcessResponse
-                {
-                    IsSuccessFull = false,
-                    Message = exc.Message
-                };
-            }
-        }
     }
 }

@@ -32,13 +32,7 @@
     <None Update="Assets\Images\reservoir-background.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="ffmpeg\bin\ffmpeg.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="ffmpeg\bin\ffplay.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="ffmpeg\bin\ffprobe.exe">
+    <None Update="ffmpeg\ffmpeg.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="ffmpeg\presets\libvpx-1080p.ffpreset">
@@ -66,6 +60,7 @@
 
   <ItemGroup>
     <Folder Include="Assets\Fonts\" />
+    <Folder Include="ffmpeg\" />
   </ItemGroup>
 
 
