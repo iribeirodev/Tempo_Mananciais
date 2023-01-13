@@ -1,4 +1,9 @@
 ﻿using System.IO;
+using static System.IO.Path;
+using System.Reflection;
+using System;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace Infrastructure.Files
 {
@@ -13,13 +18,13 @@ namespace Infrastructure.Files
         {
             foreach (var directory in Directory.GetDirectories(root))
             {
-                var newDirectory = Path.Combine(dest, Path.GetFileName(directory));
+                var newDirectory = Combine(dest, GetFileName(directory));
                 Directory.CreateDirectory(newDirectory);
                 CloneDirectory(directory, newDirectory);
             }
 
             foreach (var file in Directory.GetFiles(root))
-                File.Copy(file, Path.Combine(dest, Path.GetFileName(file)));
+                File.Copy(file, Combine(dest, GetFileName(file)));
 
         }
 
@@ -37,6 +42,16 @@ namespace Infrastructure.Files
             foreach (DirectoryInfo dir in di.GetDirectories())
                 dir.Delete(true);
 
+            if (Directory.Exists(path))
+                Directory.Delete(path);
+        }
+
+        public static string GetFullPath(params string[] paths)
+        {
+            var listPaths = new List<string>() { GetDirectoryName(Assembly.GetExecutingAssembly().Location) };
+            listPaths.AddRange(paths);
+
+            return Combine(paths.ToArray());
         }
     }
 }

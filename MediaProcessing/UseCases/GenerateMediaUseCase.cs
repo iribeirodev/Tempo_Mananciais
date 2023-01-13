@@ -1,27 +1,51 @@
 ﻿using System;
+using System.IO;
+using static System.IO.Path;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Drawing.Text;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
+using Domain.Forecast;
 using Domain.Requests;
+using Domain.Reservoir;
 using Infrastructure.Files;
 using Infrastructure.Response;
+using Infrastructure.Graphics;
+using System.Collections.Generic;
 
 namespace MediaProcessing.UseCases
 {
     public class GenerateMediaUseCase
     {
-        private readonly string _workDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Work");
-        private readonly string _imagesDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Assets", "Images");
-        private readonly string _fontsDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Assets", "Fonts");
-        private readonly string _trackDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Track");
+        private readonly string _workDir; 
+        private readonly string _imagesDir; 
+        private readonly string _fontsDir; 
+        private readonly string _trackDir; 
+        private readonly Dictionary<string, Font> _fonts;
+        private readonly Dictionary<string, Brush> _brushes;
 
-        private PrivateFontCollection fontCollection = new PrivateFontCollection();
-        private readonly int FRAMES_PER_INFO = 15;
+        public GenerateMediaUseCase()
+        {
+            _workDir = FileUtils.GetFullPath("Work");
+            _imagesDir = FileUtils.GetFullPath("Assets", "Images");
+            _fontsDir = FileUtils.GetFullPath("Assets", "Fonts");
+            _trackDir = FileUtils.GetFullPath("Track");
+
+            _fonts.Add("titleFont", GraphicsUtil.GetFont("Open Sans", 52, FontStyle.Regular));
+            _fonts.Add("subTitleFont", GraphicsUtil.GetFont("Open Sans", 24, FontStyle.Regular));
+            _fonts.Add("temperatureFont", GraphicsUtil.GetFont("Open Sans", 112, FontStyle.Bold));
+            _fonts.Add("descriptionFont", GraphicsUtil.GetFont("Open Sans", 34, FontStyle.Regular));
+            _fonts.Add("descriptionFont2", GraphicsUtil.GetFont("Open Sans", 42, FontStyle.Regular));
+            _fonts.Add("footerFont", GraphicsUtil.GetFont("Open Sans", 38, FontStyle.Regular));
+            _fonts.Add("footerFont2", GraphicsUtil.GetFont("Open Sans", 34, FontStyle.Regular));
+
+            _brushes.Add("headerColor", Brushes.White);
+            _brushes.Add("infoColor", new SolidBrush(Color.FromArgb(12, 12, 12)));
+            _brushes.Add("minColor", new SolidBrush(Color.FromArgb(128, 0, 0)));
+            _brushes.Add("maxColor", new SolidBrush(Color.FromArgb(0, 0, 128)));
+        }
 
         public async Task<ProcessResponse> Process(ProcessDataRequest processDataRequest)
         {
@@ -29,7 +53,8 @@ namespace MediaProcessing.UseCases
             {
                 await ClearAllResources();
                 await CopyResources();
-                await WriteData(processDataRequest);
+                await WriteForecastData(processDataRequest.ForecastInfo);
+                await WriteReservoirData(processDataRequest.ReservoirInfo);
                 await GenerateMedia();
 
                 return new ProcessResponse
@@ -55,16 +80,16 @@ namespace MediaProcessing.UseCases
         {
             return Task.Run(() =>
             {
-                File.Delete(Path.Combine(_workDir, "track.mp3"));
-                File.Delete(Path.Combine(_workDir, "forecast-temp.jpg"));
-                File.Delete(Path.Combine(_workDir, "reservoir-temp.jpg"));
-                File.Delete(Path.Combine(_workDir, "output.mp4"));
+                File.Delete(Combine(_workDir, "track.mp3"));
+                File.Delete(Combine(_workDir, "forecast-temp.png"));
+                File.Delete(Combine(_workDir, "reservoir-temp.png"));
+                File.Delete(Combine(_workDir, "output.mp4"));
 
-                var pngs = Directory.GetFiles(Path.Combine(_workDir)).Where(x => x.EndsWith("png")).ToList();
+                var pngs = Directory.GetFiles(Combine(_workDir)).Where(x => x.EndsWith("png")).ToList();
                 foreach(var png in pngs)
                     File.Delete(png);
 
-                var ffmpegWorkingDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "work", "ffmpeg");
+                var ffmpegWorkingDir = FileUtils.GetFullPath("work", "ffmpeg");
                 FileUtils.RemoveDirectory(ffmpegWorkingDir);
 
                 Console.WriteLine("Cleared");
@@ -80,39 +105,27 @@ namespace MediaProcessing.UseCases
             return Task.Run(() =>
             {
                 // Track
-                File.Copy(Path.Combine(_trackDir, "track.mp3"),
-                            Path.Combine(_workDir, "track.mp3"));
+                File.Copy(Combine(_trackDir, "track.mp3"), Combine(_workDir, "track.mp3"));
 
                 // Imagens
-                File.Copy(Path.Combine(_imagesDir, "forecast-background.jpg"),
-                            Path.Combine(_workDir, "forecast-temp.jpg"));
-                File.Copy(Path.Combine(_imagesDir, "reservoir-background.jpg"),
-                            Path.Combine(_workDir, "reservoir-temp.jpg"));
+                File.Copy(Combine(_imagesDir, "forecast-background.png"), Combine(_workDir, "forecast-temp.png"));
+                File.Copy(Combine(_imagesDir, "reservoir-background.png"), Combine(_workDir, "reservoir-temp.png"));
 
                 // Utilitário FFMPEG
-                var ffmpegDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "ffmpeg");
+                var ffmpegDir = FileUtils.GetFullPath("ffmpeg");
 
-                FileUtils.CloneDirectory(ffmpegDir, Path.Combine(_workDir, "ffmpeg"));
-
+                FileUtils.CloneDirectory(ffmpegDir, FileUtils.GetFullPath("work", "ffmpeg"));
             });
         }
 
-        /// <summary>
-        /// Carrega os arquivos de fontes true-type
-        /// </summary>
-        private void LoadFonts()
+        private void setupGraphics(Graphics graphics)
         {
-            var files = Directory.GetFiles(_fontsDir);
-
-            foreach (var file in files)
-                fontCollection.AddFontFile(file);
+            graphics.CompositingQuality = CompositingQuality.HighQuality;
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.SmoothingMode = SmoothingMode.HighQuality;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
         }
-
-        /// <summary>
-        /// Obtém uma fonte com determinado tamanho e estilo.
-        /// </summary>
-        private Font GetFont(string fontName, int fontSize, FontStyle fontStyle) => 
-                new Font(fontCollection.Families.Where(f => f.Name == fontName).FirstOrDefault(), fontSize, fontStyle);
 
         /// <summary>
         /// Imprime um texto ao centro de uma determinada área do canvas
@@ -132,30 +145,15 @@ namespace MediaProcessing.UseCases
             graphics.DrawString(text, textFont, brush, rect1, sf);
         }
 
-        /// <summary>
-        /// Preenche as imagens base de reservatório e forecast com as informações recebidas.
-        /// </summary>
-        /// <returns></returns>
-        private Task WriteData(ProcessDataRequest processDataDTO)
+        private Task WriteForecastData(ForecastDTO forecast)
         {
             return Task.Run(() =>
             {
-                LoadFonts();
+                GraphicsUtil.LoadFonts(_fontsDir);
 
-                var forecast = processDataDTO.ForecastInfo;
-                var reservoir = processDataDTO.ReservoirInfo;
-
-                // FORECAST - Inicio
-                var imageFile = Path.Combine(_workDir, "forecast-temp.jpg");
-                var saveFile = Path.Combine(_workDir, "pic0001.png");
-
-                var titleFont = GetFont("Open Sans", 52, FontStyle.Regular);
-                var subTitleFont = GetFont("Open Sans", 24, FontStyle.Regular);
-                var temperatureFont = new Font("Open Sans", 112, FontStyle.Bold); 
-                var descriptionFont = GetFont("Open Sans", 34, FontStyle.Regular);
-                var descriptionFont2 = GetFont("Open Sans", 42, FontStyle.Regular);
-                var footerFont = GetFont("Open Sans", 38, FontStyle.Regular);
-                var footerFont2 = GetFont("Open Sans", 34, FontStyle.Regular);
+                var imageFile = Combine(_workDir, "forecast-temp.png");
+                var saveFile = Combine(_workDir, "pic0001.png");
+                var framesPerInfo = int.Parse(Environment.GetEnvironmentVariable("FRAMES_PER_INFO"));
 
                 var headerColor = Brushes.White;
                 var infoColor = new SolidBrush(Color.FromArgb(12, 12, 12));
@@ -166,57 +164,54 @@ namespace MediaProcessing.UseCases
                 {
                     using (var graphics = Graphics.FromImage(image))
                     {
-                        graphics.CompositingQuality = CompositingQuality.HighQuality;
-                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                        graphics.SmoothingMode = SmoothingMode.HighQuality;
-                        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                        graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+                        setupGraphics(graphics);
 
                         // Header
-                        graphics.DrawString("Tempo e Mananciais", titleFont, headerColor, new PointF(10f, 15f));
-                        graphics.DrawString("P R E V I S Ã O  D O  T E M P O", subTitleFont, headerColor, new PointF(140f, 110f));
+                        graphics.DrawString("Tempo e Mananciais", _fonts["titleFont"], headerColor, new PointF(10f, 15f));
+                        graphics.DrawString("P R E V I S Ã O  D O  T E M P O", _fonts["subTitleFont"], headerColor, new PointF(140f, 110f));
 
-                        graphics.DrawString("Mínima", descriptionFont, infoColor, new PointF(275f, 290f));
-                        graphics.DrawString($"{forecast.Temp_Min}", temperatureFont, minColor, new PointF(250f, 330f));
+                        graphics.DrawString("Mínima", _fonts["descriptionFont"], infoColor, new PointF(275f, 290f));
+                        graphics.DrawString($"{forecast.Temp_Min}", _fonts["temperatureFont"], minColor, new PointF(250f, 330f));
 
-                        graphics.DrawString("Máxima", descriptionFont, infoColor, new PointF(610f, 290f));
-                        graphics.DrawString($"{forecast.Temp_Max}", temperatureFont, maxColor, new PointF(590f, 330f));
+                        graphics.DrawString("Máxima", _fonts["descriptionFont"], infoColor, new PointF(610f, 290f));
+                        graphics.DrawString($"{forecast.Temp_Max}", _fonts["temperatureFont"], maxColor, new PointF(590f, 330f));
 
-                        DrawCenteredString(graphics, $"{forecast.TendenciaTemperatura}", descriptionFont2, infoColor, 90, 520, 100, 890);
-                        DrawCenteredString(graphics, $"Umidade Mínima: {forecast.Umidade} %", descriptionFont2, infoColor, 90, 590, 100, 890);
+                        DrawCenteredString(graphics, $"{forecast.TendenciaTemperatura}", _fonts["descriptionFont2"], infoColor, 90, 520, 100, 890);
+                        DrawCenteredString(graphics, $"Umidade Mínima: {forecast.Umidade} %", _fonts["descriptionFont2"], infoColor, 90, 590, 100, 890);
 
                         var solInfo = $"O sol nasceu às {forecast.Nascer} e vai se pôr às {forecast.Ocaso}.  Estação do Ano: {forecast.Estacao}";
-                        graphics.DrawString(solInfo, footerFont, headerColor, new PointF(20, 930));
+                        graphics.DrawString(solInfo, _fonts["footerFont"], headerColor, new PointF(20, 930));
                     }
                     image.Save(saveFile, ImageFormat.Png);
                 }
-
-                for (int i = 2; i <= FRAMES_PER_INFO; i++)
+                
+                for (int i = 2; i <= framesPerInfo; i++)
                 {
-                    var targetFile = Path.Combine(_workDir, $"pic{i.ToString().PadLeft(4, '0')}.png");
+                    var targetFile = Combine(_workDir, $"pic{i.ToString().PadLeft(4, '0')}.png");
                     File.Copy(saveFile, targetFile);
                 }
 
-                // FORECAST - Término
+            });
+        }
 
+        private Task WriteReservoirData(ReservoirDTO reservoir)
+        {
+            return Task.Run(() =>
+            {
                 // RESERVATÓRIOS - Início
-                imageFile = Path.Combine(_workDir, "reservoir-temp.jpg");
-                saveFile = Path.Combine(_workDir, "pic0016.png");
+                var imageFile = Combine(_workDir, "reservoir-temp.png");
+                var saveFile = Combine(_workDir, "pic0016.png");
+                var framesPerInfo = int.Parse(Environment.GetEnvironmentVariable("FRAMES_PER_INFO"));
 
                 using (var image = new Bitmap(imageFile))
                 {
                     using (var graphics = Graphics.FromImage(image))
                     {
-                        graphics.CompositingQuality = CompositingQuality.HighQuality;
-                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                        graphics.SmoothingMode = SmoothingMode.HighQuality;
-                        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                        graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+                        setupGraphics(graphics);
 
                         // Header
-                        graphics.DrawString("Tempo e Mananciais", titleFont, headerColor, new PointF(10f, 15f));
-                        graphics.DrawString("N Í V E L  D O S  R E S E R V A T Ó R I O S", subTitleFont, headerColor, new PointF(70f, 110f));
-
+                        graphics.DrawString("Tempo e Mananciais", _fonts["titleFont"], _brushes["headerColor"], new PointF(10f, 15f));
+                        graphics.DrawString("N Í V E L  D O S  R E S E R V A T Ó R I O S", _fonts["subTitleFont"], _brushes["headerColor"], new PointF(70f, 110f));
 
                         Pen pen = new Pen(Color.Black, 2);
                         pen.Alignment = PenAlignment.Inset;
@@ -224,26 +219,24 @@ namespace MediaProcessing.UseCases
                         var initialRow = 210;
                         reservoir.Lagos.ForEach(lago =>
                         {
-                            graphics.DrawString(lago.Nome, titleFont, infoColor, new PointF(100, initialRow));
+                            graphics.DrawString(lago.Nome, _fonts["titleFont"], _brushes["infoColor"], new PointF(100, initialRow));
 
-                            CreateLevelBar(graphics, 700, initialRow + 20, lago.VolumePorcentagem, titleFont);
+                            CreateLevelBar(graphics, 700, initialRow + 20, lago.VolumePorcentagem, _fonts["titleFont"]);
 
                             initialRow += 90;
                         });
 
                         var info = "Informações disponíveis através do Instituto de Meteorologia - INMET e SABESP.";
-                        graphics.DrawString(info, footerFont2, headerColor, new PointF(20, 940));
+                        graphics.DrawString(info, _fonts["footerFont2"], _brushes["headerColor"], new PointF(20, 940));
                     }
                     image.Save(saveFile, ImageFormat.Png);
                 }
 
-                for (int i = 17; i <= FRAMES_PER_INFO * 2; i++)
+                for (int i = 17; i <= framesPerInfo * 2; i++)
                 {
-                    var targetFile = Path.Combine(_workDir, $"pic{i.ToString().PadLeft(4, '0')}.png");
+                    var targetFile = Combine(_workDir, $"pic{i.ToString().PadLeft(4, '0')}.png");
                     File.Copy(saveFile, targetFile);
                 }
-
-                // RESERVATÓRIOS - Término
             });
         }
 
@@ -309,7 +302,5 @@ namespace MediaProcessing.UseCases
                 process.WaitForExit();
             });
         }
-
-
     }
 }
