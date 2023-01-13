@@ -1,6 +1,8 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using Publisher.UseCases;
 
 namespace Publisher.Controllers
 {
@@ -8,10 +10,18 @@ namespace Publisher.Controllers
     [ApiController]
     public class DefaultController : ControllerBase
     {
-        [HttpGet]
-        public async Task<IActionResult> StartLoading()
+        private readonly ILogger<DefaultController> _logger;
+
+        public DefaultController(ILogger<DefaultController> logger) => _logger = logger;
+
+        [HttpPost]
+        [Route("/api/publishmedia")]
+        public async Task<IActionResult> StartPublishing(
+            [FromServices] PublishFileUseCase publishFileUseCase, 
+            [FromForm]IFormFile arquivo)
         {
-            return Ok();
+            var response = await publishFileUseCase.Process(arquivo);
+            return Ok(response);
         }
     }
 }

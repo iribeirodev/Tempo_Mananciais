@@ -4,15 +4,15 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:10875",
+      "applicationUrl": "http://localhost:59632",
       "sslPort": 0
     }
   },
   "profiles": {
     "IIS Express": {
       "commandName": "IISExpress",
-      "launchBrowser": true,
-      "launchUrl": "default",
+      "launchBrowser": false,
+      "launchUrl": "api/publishmedia",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -20,8 +20,8 @@
     "Publisher": {
       "commandName": "Project",
       "launchBrowser": false,
-      "launchUrl": "default",
-      "applicationUrl": "http://localhost:5000",
+      "launchUrl": "api/publishmedia",
+      "applicationUrl": "http://localhost:5700",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
