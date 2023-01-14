@@ -4,6 +4,7 @@ using System.Reflection;
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace Infrastructure.Files
 {
@@ -46,12 +47,34 @@ namespace Infrastructure.Files
                 Directory.Delete(path);
         }
 
-        public static string GetFullPath(params string[] paths)
+        /// <summary>
+        /// Retorna um caminho completo baseado no diretório raíz da aplicação
+        /// </summary>
+        /// <param name="paths">sub-diretórios</param>
+        public static string GetFullPath(params string[] paths) =>
+            Combine(new string[] { GetDirectoryName(Assembly.GetExecutingAssembly().Location) }.Concat(paths).ToArray());
+        
+        /// <summary>
+        /// Gera N cópias de um arquivo de acordo com a numeração do arquivo
+        /// </summary>
+        public static void ReplicateFiles(string filePath, int numberOfCopies)
         {
-            var listPaths = new List<string>() { GetDirectoryName(Assembly.GetExecutingAssembly().Location) };
-            listPaths.AddRange(paths);
+            // Obtém a numeração atual do arquivo
+            var resultString = Regex.Match(GetFileName(filePath), @"\d+").Value;
+            var leftZeroesQty = resultString.Length;
+            if (resultString != null)
+            {
+                numberOfCopies += int.Parse(resultString);
 
-            return Combine(paths.ToArray());
+                var nextVal = int.Parse(resultString) + 1;
+                for (int i = nextVal; i < numberOfCopies; i++)
+                {
+                    var targetFile = filePath.Replace(resultString, i.ToString().PadLeft(leftZeroesQty, '0'));
+                    File.Copy(filePath, targetFile);
+                }
+            }
+
+            Console.WriteLine("Arquivos copiados.");
         }
     }
 }
