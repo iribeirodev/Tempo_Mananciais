@@ -13,7 +13,6 @@ using Domain.Reservoir;
 using Infrastructure.Files;
 using Infrastructure.Response;
 using Infrastructure.Graphics;
-using System.Collections.Generic;
 
 namespace MediaProcessing.UseCases
 {
@@ -21,30 +20,18 @@ namespace MediaProcessing.UseCases
     {
         private readonly string _workDir; 
         private readonly string _imagesDir; 
-        private readonly string _fontsDir; 
-        private readonly string _trackDir; 
-        private readonly Dictionary<string, Font> _fonts;
-        private readonly Dictionary<string, Brush> _brushes;
+        private readonly string _trackDir;
+        private readonly CustomFonts customFonts;
+        private readonly CustomBrushes customBrushes;
 
-        public GenerateMediaUseCase()
+        public GenerateMediaUseCase(CustomFonts customFonts, CustomBrushes customBrushes)
         {
             _workDir = FileUtils.GetFullPath("Work");
             _imagesDir = FileUtils.GetFullPath("Assets", "Images");
-            _fontsDir = FileUtils.GetFullPath("Assets", "Fonts");
             _trackDir = FileUtils.GetFullPath("Track");
 
-            _fonts.Add("titleFont", GraphicsUtil.GetFont("Open Sans", 52, FontStyle.Regular));
-            _fonts.Add("subTitleFont", GraphicsUtil.GetFont("Open Sans", 24, FontStyle.Regular));
-            _fonts.Add("temperatureFont", GraphicsUtil.GetFont("Open Sans", 112, FontStyle.Bold));
-            _fonts.Add("descriptionFont", GraphicsUtil.GetFont("Open Sans", 34, FontStyle.Regular));
-            _fonts.Add("descriptionFont2", GraphicsUtil.GetFont("Open Sans", 42, FontStyle.Regular));
-            _fonts.Add("footerFont", GraphicsUtil.GetFont("Open Sans", 38, FontStyle.Regular));
-            _fonts.Add("footerFont2", GraphicsUtil.GetFont("Open Sans", 34, FontStyle.Regular));
-
-            _brushes.Add("headerColor", Brushes.White);
-            _brushes.Add("infoColor", new SolidBrush(Color.FromArgb(12, 12, 12)));
-            _brushes.Add("minColor", new SolidBrush(Color.FromArgb(128, 0, 0)));
-            _brushes.Add("maxColor", new SolidBrush(Color.FromArgb(0, 0, 128)));
+            this.customFonts = customFonts;
+            this.customBrushes = customBrushes;
         }
 
         public async Task<ProcessResponse> Process(ProcessDataRequest processDataRequest)
@@ -149,8 +136,6 @@ namespace MediaProcessing.UseCases
         {
             return Task.Run(() =>
             {
-                GraphicsUtil.LoadFonts(_fontsDir);
-
                 var imageFile = Combine(_workDir, "forecast-temp.png");
                 var saveFile = Combine(_workDir, "pic0001.png");
                 var framesPerInfo = int.Parse(Environment.GetEnvironmentVariable("FRAMES_PER_INFO"));
@@ -167,30 +152,25 @@ namespace MediaProcessing.UseCases
                         setupGraphics(graphics);
 
                         // Header
-                        graphics.DrawString("Tempo e Mananciais", _fonts["titleFont"], headerColor, new PointF(10f, 15f));
-                        graphics.DrawString("P R E V I S Ã O  D O  T E M P O", _fonts["subTitleFont"], headerColor, new PointF(140f, 110f));
+                        graphics.DrawString("Tempo & Mananciais", customFonts.TitleFont, headerColor, new PointF(10f, 15f));
+                        graphics.DrawString("P R E V I S Ã O  D O  T E M P O", customFonts.SubTitleFont, headerColor, new PointF(140f, 110f));
 
-                        graphics.DrawString("Mínima", _fonts["descriptionFont"], infoColor, new PointF(275f, 290f));
-                        graphics.DrawString($"{forecast.Temp_Min}", _fonts["temperatureFont"], minColor, new PointF(250f, 330f));
+                        graphics.DrawString("Mínima", customFonts.DescriptionFont , infoColor, new PointF(275f, 290f));
+                        graphics.DrawString($"{forecast.Temp_Min}", customFonts.TemperatureFont, minColor, new PointF(250f, 330f));
 
-                        graphics.DrawString("Máxima", _fonts["descriptionFont"], infoColor, new PointF(610f, 290f));
-                        graphics.DrawString($"{forecast.Temp_Max}", _fonts["temperatureFont"], maxColor, new PointF(590f, 330f));
+                        graphics.DrawString("Máxima", customFonts.DescriptionFont, infoColor, new PointF(610f, 290f));
+                        graphics.DrawString($"{forecast.Temp_Max}", customFonts.TemperatureFont, maxColor, new PointF(590f, 330f));
 
-                        DrawCenteredString(graphics, $"{forecast.TendenciaTemperatura}", _fonts["descriptionFont2"], infoColor, 90, 520, 100, 890);
-                        DrawCenteredString(graphics, $"Umidade Mínima: {forecast.Umidade} %", _fonts["descriptionFont2"], infoColor, 90, 590, 100, 890);
+                        DrawCenteredString(graphics, $"{forecast.TendenciaTemperatura}", customFonts.DescriptionFontII, infoColor, 90, 520, 100, 890);
+                        DrawCenteredString(graphics, $"Umidade Mínima: {forecast.Umidade} %", customFonts.DescriptionFontII, infoColor, 90, 590, 100, 890);
 
                         var solInfo = $"O sol nasceu às {forecast.Nascer} e vai se pôr às {forecast.Ocaso}.  Estação do Ano: {forecast.Estacao}";
-                        graphics.DrawString(solInfo, _fonts["footerFont"], headerColor, new PointF(20, 930));
+                        graphics.DrawString(solInfo, customFonts.FooterFont, headerColor, new PointF(20, 930));
                     }
                     image.Save(saveFile, ImageFormat.Png);
                 }
-                
-                for (int i = 2; i <= framesPerInfo; i++)
-                {
-                    var targetFile = Combine(_workDir, $"pic{i.ToString().PadLeft(4, '0')}.png");
-                    File.Copy(saveFile, targetFile);
-                }
 
+                FileUtils.ReplicateFiles(saveFile, 15);
             });
         }
 
@@ -203,15 +183,20 @@ namespace MediaProcessing.UseCases
                 var saveFile = Combine(_workDir, "pic0016.png");
                 var framesPerInfo = int.Parse(Environment.GetEnvironmentVariable("FRAMES_PER_INFO"));
 
-                using (var image = new Bitmap(imageFile))
+                Bitmap bitmapSource = (Bitmap)Image.FromFile(imageFile);
+                Bitmap temporaryBitmap = new Bitmap(bitmapSource.Width, bitmapSource.Height); 
+
+                using (var image = new Bitmap(temporaryBitmap))
                 {
                     using (var graphics = Graphics.FromImage(image))
                     {
                         setupGraphics(graphics);
 
+                        graphics.DrawImage(bitmapSource, 0, 0);
+
                         // Header
-                        graphics.DrawString("Tempo e Mananciais", _fonts["titleFont"], _brushes["headerColor"], new PointF(10f, 15f));
-                        graphics.DrawString("N Í V E L  D O S  R E S E R V A T Ó R I O S", _fonts["subTitleFont"], _brushes["headerColor"], new PointF(70f, 110f));
+                        graphics.DrawString("Tempo & Mananciais", customFonts.TitleFont, customBrushes.HeaderColor, new PointF(10f, 15f));
+                        graphics.DrawString("N Í V E L  D O S  R E S E R V A T Ó R I O S", customFonts.SubTitleFont, customBrushes.HeaderColor, new PointF(70f, 110f));
 
                         Pen pen = new Pen(Color.Black, 2);
                         pen.Alignment = PenAlignment.Inset;
@@ -219,24 +204,20 @@ namespace MediaProcessing.UseCases
                         var initialRow = 210;
                         reservoir.Lagos.ForEach(lago =>
                         {
-                            graphics.DrawString(lago.Nome, _fonts["titleFont"], _brushes["infoColor"], new PointF(100, initialRow));
+                            graphics.DrawString(lago.Nome, customFonts.TitleFont, customBrushes.InfoColor, new PointF(100, initialRow));
 
-                            CreateLevelBar(graphics, 700, initialRow + 20, lago.VolumePorcentagem, _fonts["titleFont"]);
+                            CreateLevelBar(graphics, 700, initialRow + 20, lago.VolumePorcentagem, customFonts.TitleFont);
 
                             initialRow += 90;
                         });
 
                         var info = "Informações disponíveis através do Instituto de Meteorologia - INMET e SABESP.";
-                        graphics.DrawString(info, _fonts["footerFont2"], _brushes["headerColor"], new PointF(20, 940));
+                        graphics.DrawString(info, customFonts.FooterFontII, customBrushes.HeaderColor, new PointF(20, 940));
                     }
                     image.Save(saveFile, ImageFormat.Png);
                 }
 
-                for (int i = 17; i <= framesPerInfo * 2; i++)
-                {
-                    var targetFile = Combine(_workDir, $"pic{i.ToString().PadLeft(4, '0')}.png");
-                    File.Copy(saveFile, targetFile);
-                }
+                FileUtils.ReplicateFiles(saveFile, 15);
             });
         }
 

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using MediaProcessing.UseCases;
 using Infrastructure.Graphics;
 using Infrastructure.Files;
+using MediaProcessing.Services;
 
 namespace MediaProcessing
 {
@@ -21,6 +22,7 @@ namespace MediaProcessing
             services.AddTransient<CustomFonts>(_ => new CustomFonts(FileUtils.GetFullPath("Assets", "Fonts")));
             services.AddTransient<CustomBrushes>();
             services.AddTransient<GenerateMediaUseCase>();
+            services.AddTransient<ExternalService>();
             services.AddControllers();
         }
 
